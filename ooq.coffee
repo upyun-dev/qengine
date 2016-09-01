@@ -32,7 +32,7 @@ class Node
 
 # 由于采用 JSON 对象表示法, 可以省略 tokenize 过程, 直接得到词法分析结果.
 # 构造语法树
-class SyntaxTree
+class Parser
 
   LOGICAL_OPS:
     "and": on
@@ -52,10 +52,25 @@ class SyntaxTree
   ROOT_NAME: 'QUERY_ROOT'
 
   constructor: (@token) ->
-    @make null
+    @parse null
 
-  make: (parent) ->
-    @make_node parent, @ROOT_NAME, @token
+  parse: (parent) ->
+    @tree = @make_node parent, @ROOT_NAME, @token
+
+    if @tree.children.length > 1
+      implict_logic_operator = @tree
+      @tree = new Node '$and': implict_logic_operator.token
+      implict_logic_operator.name = '$and'
+      implict_logic_operator.type = NODE_TYPE::LOGICAL_OPERATOR
+      implict_logic_operator.value = 'and'
+      implict_logic_operator.parent = @tree
+
+      @tree.type = NODE_TYPE::ROOT
+      @tree.name = @ROOT_NAME
+      @tree.value = @ROOT_NAME
+      @tree.children.push implict_logic_operator
+    
+    @tree
 
   make_node: (parent, name, token) =>
     node = new Node token
@@ -84,11 +99,11 @@ class SyntaxTree
   semantic_checker: (parent, child) ->
     
     # check node type
-    if parent?.children.type?
-      unless parent.children.type is child.type
-        throw new SemanticError "the brother nodes must be of the same type to each other"
-    else
-      parent.children.type ?= child.type
+    # if parent?.children.type?
+    #   unless parent.children.type is child.type
+    #     throw new SemanticError "the brother nodes must be of the same type to each other"
+    # else
+    #   parent.children.type ?= child.type
 
     # check field name
     parent_field_name = parent?.field_name
@@ -154,89 +169,98 @@ class SyntaxTree
   check_logical_op_validation: (op_name) ->
     op_name of @LOGICAL_OPERATOR
 
-  # check: ->
-
 
 # 语义分析
-# class Parser
+class Semantic
 
-#   constructor(@tree) ->
-    
+  constructor: (@tree) ->
+    @analyze @tree
 
-#   rules: ->
+  analyze: (node) ->
+    {type, name, value, parent, children, field_name } = node
 
-#   check: (o) ->
+    switch node.type
+    when NODE_TYPE::ROOT
+      exec_query children
+    when NODE_TYPE::FIELD_NAME
+      parse_field_name_node field_name, children
+    when NODE_TYPE::LOGICAL_OPERATOR
+      parse_logical_operator_node field_name, value, children
+    else
+      throw new SyntaxError "can not analyze this node: #{node.name}"
 
-#   parse: (o) ->
-#     node = o
-#     node_type = analyze_type node
-#     switch node_type
-#     when NODE_TYPE::ROOT
-#       exec_query node.children
-#     when NODE_TYPE::FIELD_NAME
-#       arg = node.node_value
-#       parse_field_name_node arg node.children
-#     when NODE_TYPE::LOGICAL_OPERATOR
-#       parse_logical_operator_node arg, node.node_value, node.children
-#     # when NODE_TYPE::RELATION_NODE
-#     #   gen_query_lang arg, node.parent, node
-#     else
-#       throw new SyntaxError o
+  derive_field_name: ({ children }) ->
+    for child in children
+      { token, type, value, field_name, children } = child
+      if type is NODE_TYPE::RELATION_NODE
+        token
+      else
+        derive_logical_operator child
 
-#   parse_relation_node: (relation_node) ->
-#     gen_relation_query relation_node
+  derive_logical_operator: ({ token, type, value, field_name, children }) ->
+    logical_op = ext_code[value]
+
+    for child in children
+      { token, type } = child
+      switch type
+      when NODE::RELATION_GROUP
+        logical_op token...
+      when NODE::RELATION_NODE
+        logical_op token
+      when NODE::LOGICAL_OPERATOR
+        logical_op derive_logical_operator child
+      when NODE::FIELD_NAME
+        logical_op derive_field_name child
+
+  parse_relation_node: (relation_node) ->
+    gen_relation_query relation_node
   
-#   parse_field_name_node: (field_name_node) ->
-#     { field_name, children } = field_name_node
-#     if children.type is NODE_TYPE::RELATION_NODE
-#       relation_node = children[0]
-#       parse_relation_node relation_node
-#     else
-#       parse_logical_operator_node child for child in children
+  parse_field_name_node: (field_name_node) ->
+    { field_name, children } = field_name_node
+    if children.type is NODE_TYPE::RELATION_NODE
+      relation_node = children[0]
+      parse_relation_node relation_node
+    else
+      parse_logical_operator_node child for child in children
   
-#   parse_logical_operator_node: (n) ->
-#     { children, name, value, field_name } = n
+  parse_logical_operator_node: (n) ->
+    { children, name, value, field_name } = n
 
-#     # child is a relation group
-#     if children.type is NODE_TYPE::RELATION_GROUP
-#       relation_group = children[0]
-#       # the child is a relation node's group
+    # child is a relation group
+    if children.type is NODE_TYPE::RELATION_GROUP
+      relation_group = children[0]
+      # the child is a relation node's group
 
-#       # the $not op can not be used here
-#       if value is 'not'
-#         throw new SyntaxError "LOGICAL_OPERATOR #{name} can not be used in multiple relation query"
-#       else
-#         gen_logical_query [field_name, value, relation_group...]...
+      # the $not op can not be used here
+      # if value is 'not'
+      #   throw new SyntaxError "LOGICAL_OPERATOR #{name} can not be used in multiple relation query"
+      # else
+        gen_logical_query [field_name, value, relation_group...]...
    
-#     # child is a relation node
-#     else if children.type is NODE_TYPE::RELATION_NODE
-#       relation_node = children[0]
+    # child is a relation node
+    else if children.type is NODE_TYPE::RELATION_NODE
+      relation_node = children[0]
 
-#       if value isnt 'not'
-#         throw new SyntaxError "only `$not` operator can be used in one-relation query"
-#       else
-#         gen_logical_query field_name, value, parse_relation_node relation_node
+      if value isnt 'not'
+        throw new SyntaxError "only `$not` operator can be used in one-relation query"
+      else
+        gen_logical_query field_name, value, parse_relation_node relation_node
    
-#     # children are field_name nodes
-#     else if children.type is NODE_TYPE::FIELD_NAME
-#       if field_name?
-#         throw new SyntaxError "can not embed the field(s) inside a LOGICAL_OPERATOR which has been accept a field => ('#{field_name}')"
-#       else
-#         gen_logical_query [null, value, parse_field_name_node(children)...]...
+    # children are field_name nodes
+    else if children.type is NODE_TYPE::FIELD_NAME
+      if field_name?
+        throw new SyntaxError "can not embed the field(s) inside a LOGICAL_OPERATOR which has been accept a field => ('#{field_name}')"
+      else
+        gen_logical_query [null, value, parse_field_name_node(children)...]...
    
-#     # children are logical_operator nodes
-#     else if children.type is NODE_TYPE::LOGICAL_OPERATOR
-#       gen_logical_query field_name, value, (parse_logical_operator_node child for child in children)..
+    # children are logical_operator nodes
+    else if children.type is NODE_TYPE::LOGICAL_OPERATOR
+      gen_logical_query field_name, value, (parse_logical_operator_node child for child in children)..
 
-#   # parse_relation_group: (field_name, relation_group) ->
-#   #   for relation in relation_group
-#   gen_relation_query: (relation_node) ->
+  # parse_relation_group: (field_name, relation_group) ->
+  #   for relation in relation_group
+  gen_relation_query: (relation_node) ->
 
 
-#   gen_logical_query: (field_name, op, sub_query...) ->
-  
-
-# # 生成SQL查询代码
-# class Semantic
-#   constructor(@) ->
+  gen_logical_query: (field_name, op, sub_query...) ->
     
