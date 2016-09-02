@@ -13,7 +13,21 @@
 
 # ooq-lang 应用了上述文法规则
 
-{ isPrimitive, isArray } = require 'util'
+{ isPrimitive, isArray, inspect } = require 'util'
+
+# an example about ffi
+ffi =
+  and: (args) -> "AND(#{inspect args})"
+  or: (args) -> "OR(#{inspect args})"
+  not: (arg) -> "NOT(#{inspect arg})"
+  xor: (args) -> "XOR(#{inspect args})"
+
+  eq: (column, value) -> "eq(#{inspect column}, #{inspect value})"
+  neq: (column, value) -> "neq(#{inspect column}, #{inspect value})"
+  gt: (column, value) -> "gt(#{inspect column}, #{inspect value})"
+  lt: (column, value) -> "lt(#{inspect column}, #{inspect value})"
+  gte: (column, value) -> "gte(#{inspect column}, #{inspect value})"
+  lte: (column, value) -> "lte(#{inspect column}, #{inspect value})"
 
 class SemanticError extends Error 
   constructor: (@message) ->
@@ -31,7 +45,7 @@ class Node
     @field_name = null
 
 # 由于采用 JSON 对象表示法, 可以省略 tokenize 过程, 直接得到词法分析结果.
-# 构造语法树
+# 构造语法树 (句法分析 & 语法语义检查)
 class Parser
 
   LOGICAL_OPS:
@@ -54,21 +68,20 @@ class Parser
   constructor: (@token) ->
     @parse null
 
-  parse: (parent) ->
+  parse: (parent) =>
     @tree = @make_node parent, @ROOT_NAME, @token
 
-    if @tree.children.length > 1
-      implict_logic_operator = @tree
-      @tree = new Node '$and': implict_logic_operator.token
-      implict_logic_operator.name = '$and'
-      implict_logic_operator.type = NODE_TYPE::LOGICAL_OPERATOR
-      implict_logic_operator.value = 'and'
-      implict_logic_operator.parent = @tree
+    implict_logic_operator = @tree
+    @tree = new Node '$and': implict_logic_operator.token
+    implict_logic_operator.name = '$and'
+    implict_logic_operator.type = NODE_TYPE::LOGICAL_OPERATOR
+    implict_logic_operator.value = 'and'
+    implict_logic_operator.parent = @tree
 
-      @tree.type = NODE_TYPE::ROOT
-      @tree.name = @ROOT_NAME
-      @tree.value = @ROOT_NAME
-      @tree.children.push implict_logic_operator
+    @tree.type = NODE_TYPE::ROOT
+    @tree.name = @ROOT_NAME
+    @tree.value = @ROOT_NAME
+    @tree.children.push implict_logic_operator
     
     @tree
 
@@ -96,7 +109,7 @@ class Parser
 
     node
     
-  semantic_checker: (parent, child) ->
+  semantic_checker: (parent, child) =>
     
     # check node type
     # if parent?.children.type?
@@ -141,7 +154,7 @@ class Parser
       else throw new SemanticError 
         "can not inferer the semantic of the #{child.token} on logical operator (#{parent.name})"
   
-  analyze_spec: (node, token) ->
+  calculate_spec: (node, token) =>
     
     # for ROOT node
     if not node.name?
@@ -170,97 +183,54 @@ class Parser
     op_name of @LOGICAL_OPERATOR
 
 
-# 语义分析
-class Semantic
+# 语义分析 & 中间代码生成
+class SemanticAnalysis
 
   constructor: (@tree) ->
-    @analyze @tree
+    @query_code = @analyze @tree
 
-  analyze: (node) ->
+  analyze: (node) =>
     {type, name, value, parent, children, field_name } = node
+    # logical_op = ffi[value]
 
-    switch node.type
+    switch type
     when NODE_TYPE::ROOT
-      exec_query children
+      analyze children[0]
     when NODE_TYPE::FIELD_NAME
-      parse_field_name_node field_name, children
+      derive_field_name node
     when NODE_TYPE::LOGICAL_OPERATOR
-      parse_logical_operator_node field_name, value, children
+      derive_logical_operator node
     else
       throw new SyntaxError "can not analyze this node: #{node.name}"
 
-  derive_field_name: ({ children }) ->
+  derive_field_name: ({ children }) =>
     for child in children
       { token, type, value, field_name, children } = child
       if type is NODE_TYPE::RELATION_NODE
-        token
+        { op, value } = token
+        ffi[op ? 'eq'] field_name, value ? token
       else
         derive_logical_operator child
 
-  derive_logical_operator: ({ token, type, value, field_name, children }) ->
-    logical_op = ext_code[value]
+  derive_logical_operator: ({ value, field_name, children }) =>
+    logical_op = ffi[value]
 
+    sub_query = []
     for child in children
       { token, type } = child
       switch type
       when NODE::RELATION_GROUP
-        logical_op token...
+        sub_query.push (ffi[subtoken.op ? 'eq'] field_name, subtoken.value ? sub_token for sub_token in token)...
       when NODE::RELATION_NODE
-        logical_op token
+        { op, value } = token
+        sub_query.push ffi[op ? 'eq'] field_name, value ? token
       when NODE::LOGICAL_OPERATOR
-        logical_op derive_logical_operator child
+        sub_query.push derive_logical_operator child
       when NODE::FIELD_NAME
-        logical_op derive_field_name child
-
-  parse_relation_node: (relation_node) ->
-    gen_relation_query relation_node
-  
-  parse_field_name_node: (field_name_node) ->
-    { field_name, children } = field_name_node
-    if children.type is NODE_TYPE::RELATION_NODE
-      relation_node = children[0]
-      parse_relation_node relation_node
-    else
-      parse_logical_operator_node child for child in children
-  
-  parse_logical_operator_node: (n) ->
-    { children, name, value, field_name } = n
-
-    # child is a relation group
-    if children.type is NODE_TYPE::RELATION_GROUP
-      relation_group = children[0]
-      # the child is a relation node's group
-
-      # the $not op can not be used here
-      # if value is 'not'
-      #   throw new SyntaxError "LOGICAL_OPERATOR #{name} can not be used in multiple relation query"
-      # else
-        gen_logical_query [field_name, value, relation_group...]...
-   
-    # child is a relation node
-    else if children.type is NODE_TYPE::RELATION_NODE
-      relation_node = children[0]
-
-      if value isnt 'not'
-        throw new SyntaxError "only `$not` operator can be used in one-relation query"
-      else
-        gen_logical_query field_name, value, parse_relation_node relation_node
-   
-    # children are field_name nodes
-    else if children.type is NODE_TYPE::FIELD_NAME
-      if field_name?
-        throw new SyntaxError "can not embed the field(s) inside a LOGICAL_OPERATOR which has been accept a field => ('#{field_name}')"
-      else
-        gen_logical_query [null, value, parse_field_name_node(children)...]...
-   
-    # children are logical_operator nodes
-    else if children.type is NODE_TYPE::LOGICAL_OPERATOR
-      gen_logical_query field_name, value, (parse_logical_operator_node child for child in children)..
-
-  # parse_relation_group: (field_name, relation_group) ->
-  #   for relation in relation_group
-  gen_relation_query: (relation_node) ->
-
-
-  gen_logical_query: (field_name, op, sub_query...) ->
+        sub_query.push (derive_field_name child)...
     
+    logical_op sub_query
+
+setup_ffi = (@ffi) => @ffi
+
+module.exports = { setup_ffi, Parser, SemanticAnalysis }
