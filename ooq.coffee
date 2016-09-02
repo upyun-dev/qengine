@@ -16,7 +16,7 @@
 { isPrimitive, isArray, inspect } = require 'util'
 
 # an example about ffi
-ffi =
+@ffi = internal_ffi =
   and: (args) -> "AND(#{inspect args})"
   or: (args) -> "OR(#{inspect args})"
   not: (arg) -> "NOT(#{inspect arg})"
@@ -182,6 +182,57 @@ class Parser
   check_logical_op_validation: (op_name) ->
     op_name of @LOGICAL_OPERATOR
 
+  output: (node = @tree, depth = 0) ->
+    TAB = ' '.repeat depth * 4
+
+    { name, value, type, parent, children, field_name, token } = node
+
+    switch type
+    when NODE_TYPE::ROOT
+      """
+        #{TAB}TYPE = ROOT
+        #{TAB}PARENT = NIL
+        #{TAB}CHILDREN =
+        #{TAB}#{ouput child, depth + 1 for child in children}
+      """
+    when NODE_TYPE::FIELD_NAME
+      """
+        #{TAB}| -> TYPE = #{type}
+        #{TAB}| -> NAME = #{name}
+        #{TAB}| -> VALUE = #{value}
+        #{TAB}| -> PARENT = #{parent.type}
+        #{TAB}| -> FIELD_NAME = #{field_name}
+        #{TAB}| -> CHILDREN =
+        #{TAB}#{output child, depth + 1 for child in children}
+      """
+    when NODE_TYPE::RELATION_NODE
+      """
+        #{TAB}| -> TYPE = #{type}
+        #{TAB}| -> VALUE = #{token.value ? token}
+        #{TAB}| -> OP = #{token.op ? "NIL"}
+        #{TAB}| -> PARENT = #{parent.type}
+        #{TAB}| -> FIELD_NAME = #{field_name}
+      """
+    when NODE_TYPE::RELATION_GROUP
+      for item in token
+        """
+          #{TAB}| -> TYPE = #{type}
+          #{TAB}| -> VALUE = #{item.value ? item}
+          #{TAB}| -> OP = #{item.op ? "NIL"}
+          #{TAB}| -> PARENT = #{parent.type}
+          #{TAB}| -> FIELD_NAME = #{field_name}
+        """
+      .join '#{TAB}================================\n'
+    when NODE_TYPE::LOGICAL_OPERATOR
+      """
+        #{TAB}| -> TYPE = #{type}
+        #{TAB}| -> NAME = #{name}
+        #{TAB}| -> VALUE = #{value}
+        #{TAB}| -> PARENT = #{parent.type}
+        #{TAB}| -> FIELD_NAME = #{field_name}
+        #{TAB}| -> CHILDREN =
+        #{TAB}#{output child, depth + 1 for child in children}
+      """
 
 # 语义分析 & 中间代码生成
 class SemanticAnalysis
@@ -230,6 +281,13 @@ class SemanticAnalysis
         sub_query.push (derive_field_name child)...
     
     logical_op sub_query
+  
+  output: ->
+    _tmp_ffi = @ffi
+    @ffi = internal_ffi
+    o = @analyze @tree
+    @ffi = _tmp_ffi
+    o
 
 setup_ffi = (@ffi) => @ffi
 
