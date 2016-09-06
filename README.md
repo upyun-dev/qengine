@@ -59,29 +59,138 @@ FIELD_NAME_NODE -> RELATION_NODE | LOGICAL_OPERATOR_NODE
 
 #### 示例
 
-```coffee
-# 查询 #1
-"name":
-  op: "eq"
-  value: "John"
-"age":
-  "$and": [
-    { op: "gt", value: 15 }
-    { op: "lt", value: 30 }
-  ]
+给出如下查询语句:
 
-# 查询 #2
-"$or":
-  "type":
-    "$not":
-      "$and": [
-        { op: "eq", value: "food" }
-        { op: "gt", value: "z*" }
-        { op: "lt", value: "m*" }
-      ]
-  "location":
-    "$or": [
-      { op: "eq", value: "New Yorks" }
-      { op: "eq", value: "Missiby" }
+```coffee
+query =
+  name: 
+    $or: [
+      "john"
+      "baner"
     ]
+  age:
+    $not:
+      op: 'gt'
+      value: 30
+  "$or":
+    "type":
+      "$not":
+        "$and": [
+          { op: "eq", value: "food" }
+          { op: "gt", value: "z*" }
+          { op: "lt", value: "m*" }
+        ]
+    "location":
+      "$or": [
+        { op: "eq", value: "New Yorks" }
+        { op: "eq", value: "Missiby" }
+      ]
+
+```
+
+qengine分析结果(AST 和 intermediate code)如下所示:
+
+```
+# 抽象语法树 =>
+
+TYPE = ROOT
+PARENT = NIL
+CHILDREN =
+    | -> TYPE = LOGICAL_OPERATOR
+    | -> NAME = $and
+    | -> VALUE = and
+    | -> FIELD_NAME = undefined
+    | -> CHILDREN =
+    |    | -> TYPE = FIELD_NAME
+    |    | -> NAME = name
+    |    | -> VALUE = name
+    |    | -> FIELD_NAME = name
+    |    | -> CHILDREN =
+    |    |    | -> TYPE = LOGICAL_OPERATOR
+    |    |    | -> NAME = $or
+    |    |    | -> VALUE = or
+    |    |    | -> FIELD_NAME = name
+    |    |    | -> CHILDREN =
+    |    |    |    | -> TYPE = RELATION_GROUP
+    |    |    |    | -> VALUE = john
+    |    |    |    | -> OP = NIL
+    |    |    |    | -> FIELD_NAME = name
+    |    |    |    ================
+    |    |    |    | -> TYPE = RELATION_GROUP
+    |    |    |    | -> VALUE = baner
+    |    |    |    | -> OP = NIL
+    |    |    |    | -> FIELD_NAME = name
+    |    | -> TYPE = FIELD_NAME
+    |    | -> NAME = age
+    |    | -> VALUE = age
+    |    | -> FIELD_NAME = age
+    |    | -> CHILDREN =
+    |    |    | -> TYPE = LOGICAL_OPERATOR
+    |    |    | -> NAME = $not
+    |    |    | -> VALUE = not
+    |    |    | -> FIELD_NAME = age
+    |    |    | -> CHILDREN =
+    |    |    |    | -> TYPE = RELATION_NODE
+    |    |    |    | -> VALUE = 30
+    |    |    |    | -> OP = gt
+    |    |    |    | -> FIELD_NAME = age
+    |    | -> TYPE = LOGICAL_OPERATOR
+    |    | -> NAME = $or
+    |    | -> VALUE = or
+    |    | -> FIELD_NAME = undefined
+    |    | -> CHILDREN =
+    |    |    | -> TYPE = FIELD_NAME
+    |    |    | -> NAME = type
+    |    |    | -> VALUE = type
+    |    |    | -> FIELD_NAME = type
+    |    |    | -> CHILDREN =
+    |    |    |    | -> TYPE = LOGICAL_OPERATOR
+    |    |    |    | -> NAME = $not
+    |    |    |    | -> VALUE = not
+    |    |    |    | -> FIELD_NAME = type
+    |    |    |    | -> CHILDREN =
+    |    |    |    |    | -> TYPE = LOGICAL_OPERATOR
+    |    |    |    |    | -> NAME = $and
+    |    |    |    |    | -> VALUE = and
+    |    |    |    |    | -> FIELD_NAME = type
+    |    |    |    |    | -> CHILDREN =
+    |    |    |    |    |    | -> TYPE = RELATION_GROUP
+    |    |    |    |    |    | -> VALUE = food
+    |    |    |    |    |    | -> OP = eq
+    |    |    |    |    |    | -> FIELD_NAME = type
+    |    |    |    |    |    ================
+    |    |    |    |    |    | -> TYPE = RELATION_GROUP
+    |    |    |    |    |    | -> VALUE = z*
+    |    |    |    |    |    | -> OP = gt
+    |    |    |    |    |    | -> FIELD_NAME = type
+    |    |    |    |    |    ================
+    |    |    |    |    |    | -> TYPE = RELATION_GROUP
+    |    |    |    |    |    | -> VALUE = m*
+    |    |    |    |    |    | -> OP = lt
+    |    |    |    |    |    | -> FIELD_NAME = type
+    |    |    | -> TYPE = FIELD_NAME
+    |    |    | -> NAME = location
+    |    |    | -> VALUE = location
+    |    |    | -> FIELD_NAME = location
+    |    |    | -> CHILDREN =
+    |    |    |    | -> TYPE = LOGICAL_OPERATOR
+    |    |    |    | -> NAME = $or
+    |    |    |    | -> VALUE = or
+    |    |    |    | -> FIELD_NAME = location
+    |    |    |    | -> CHILDREN =
+    |    |    |    |    | -> TYPE = RELATION_GROUP
+    |    |    |    |    | -> VALUE = New Yorks
+    |    |    |    |    | -> OP = eq
+    |    |    |    |    | -> FIELD_NAME = location
+    |    |    |    |    ================
+    |    |    |    |    | -> TYPE = RELATION_GROUP
+    |    |    |    |    | -> VALUE = Missiby
+    |    |    |    |    | -> OP = eq
+    |    |    |    |    | -> FIELD_NAME = location
+
+# 中间代码表示 =>
+AND([ 'OR([ \'eq(\\\'name\\\', \\\'john\\\')\', \'eq(\\\'name\\\', \\\'baner\\\')\' ])',
+  'NOT([ \'gt(\\\'age\\\', 30)\' ])',
+  'OR([ \'NOT([ \\\'AND([ \\\\\\\'eq(\\\\\\\\\\\\\\\'type\\\\\\\\\\\\\\\', \\\\\\\\\\\\\\\'food\\\\\\\\\\\\\\\')\\\\\\\',\\\\n  \\\\\\\'gt(\\\\\\\\\\\\\\\'type\\\\\\\\\\\\\\\', \\\\\\\\\\\\\\\'z*\\\\\\\\\\\\\\\')\\\\\\\',\\\\n  \\\\\\\'lt(\\\\\\\\\\\\\\\'type\\\\\\\\\\\\\\\', \\\\\\\\\\\\\\\'m*\\\\\\\\\\\\\\\')\\\\\\\' ])\\\' ])\',\n  \'OR([ \\\'eq(\\\\\\\'location\\\\\\\', \\\\\\\'New Yorks\\\\\\\')\\\',\\n  \\\'eq(\\\\\\\'location\\\\\\\', \\\\\\\'Missiby\\\\\\\')\\\' ])\' ])' ])
+
 ```
