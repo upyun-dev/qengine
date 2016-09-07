@@ -3,7 +3,9 @@ ooq-lang
 
 一个类似 MongoDB 查询语法的 MySQL 面向对象(JavaScript 对象字面量表示法)查询语言.
 
-qengine 是目前到编译器.
+qengine 是目前的编译器. 
+采用了自顶向下分析法, 语法分析阶段使用了简单的递归下降来构建语法树, 
+所有语法应用最左推导(最右归约).
 
 ### usage
 
@@ -56,6 +58,23 @@ FIELD_NAME_NODE -> RELATION_NODE | LOGICAL_OPERATOR_NODE
 + `NODE_TYPE::RELATION_NODE`: 叶节点之一. 开始回溯用 ffi 生成代码.
 + `NODE_TYPE::RELATION_GROUP`: 叶节点之一, 表示一组上一类型. 开始回溯用 ffi 生成代码.
 + `NODE_TYPE::LOGICAL_OPERATOR`: 表示逻辑运算符节点, 作用于子节点, 构建他们之间的逻辑关系.
+
+#### 错误提示
+
+qengine 会对误用的语法语义给出适当的错误提示, 方便使用和调试过程. ooq 定义两种类型的错误: 语法错误和语义错误.
+
+绝大多数潜在的错误会在语义分析阶段之前的语法树构建阶段检测出来
+
+`SyntaxError`
+
++ `"invalid LOGICAL_OPERATOR => `#{child.name}`"`
++ `"invalid RELATION_OPERATOR => `#{op}`"`
+
+`SemanticError`:
+
++ `"field can not be embed inside a another field => a previous field name has been found: ('#{parent_field_name}')"`
++ `"can not inferer the semantic of the #{child.token} on field name (#{parent.name})"`
++ `"can not inferer the semantic of the #{child.token} on logical operator (#{parent.name})"`
 
 #### 示例
 
