@@ -16,7 +16,7 @@
 { isPrimitive, isArray, inspect } = require 'util'
 
 # an example about ffi
-ffi = internal_ffi =
+global.ffi = global.internal_ffi =
   and: (args) -> "AND(#{inspect args})"
   or: (args) -> "OR(#{inspect args})"
   not: (arg) -> "NOT(#{inspect arg})"
@@ -135,8 +135,6 @@ class Parser
         NODE_TYPE.RELATION_GROUP
       when token.op? and token.value? or isPrimitive token
         NODE_TYPE.RELATION_NODE
-      else
-        null
     
   semantic_checker: (parent, child) =>
     
@@ -253,11 +251,11 @@ class Parser
 class SemanticAnalysis
 
   constructor: (@tree) ->
+    @ffi = global.ffi
     @query_code = @analyze @tree
 
   analyze: (node) =>
     {type, name, value, parent, children, field_name } = node
-    # logical_op = ffi[value]
 
     switch type
       when NODE_TYPE.ROOT
@@ -274,34 +272,32 @@ class SemanticAnalysis
       { token, type, value, field_name, children } = child
       if type is NODE_TYPE.RELATION_NODE
         { op, value } = token
-        ffi[op ? 'eq'] field_name, value ? token
+        @ffi[op ? 'eq'] field_name, value ? token
       else
         @derive_logical_operator child
 
   derive_logical_operator: ({ value, field_name, children }) =>
-    logical_op = ffi[value]
-
     sub_query = []
     for child in children
       { token, type } = child
       switch type
         when NODE_TYPE.RELATION_GROUP
-          sub_query.push (ffi[sub_token.op ? 'eq'] field_name, sub_token.value ? sub_token for sub_token in token)...
+          sub_query.push (@ffi[sub_token.op ? 'eq'] field_name, sub_token.value ? sub_token for sub_token in token)...
         when NODE_TYPE.RELATION_NODE
           { op, value } = token
-          sub_query.push ffi[op ? 'eq'] field_name, value ? token
+          sub_query.push @ffi[op ? 'eq'] field_name, value ? token
         when NODE_TYPE.LOGICAL_OPERATOR
           sub_query.push @derive_logical_operator child
         when NODE_TYPE.FIELD_NAME
           sub_query.push (@derive_field_name child)...
     
-    logical_op sub_query
+    @ffi[value] sub_query
   
   output: ->
-    _tmp_ffi = ffi
-    ffi = internal_ffi
+    _tmp_ffi = @ffi
+    @ffi = internal_ffi
     o = @analyze @tree
-    ffi = _tmp_ffi
+    @ffi = _tmp_ffi
     o
 
 setup_ffi = (ffi) => global.ffi = ffi
