@@ -11,9 +11,7 @@
 # LOGICAL_OPERATOR_NODE -> RELATION_NODE | RELATION_GROUP | LOGICAL_OPERATOR_NODE | FIELD_NAME_NODE
 # FIELD_NAME_NODE -> RELATION_NODE | LOGICAL_OPERATOR_NODE
 
-# ooq-lang 应用了上述文法规则
-
-{ isPrimitive, isArray, inspect } = require 'util'
+{ isPrimitive, isArray } = require 'util'
 
 # an example about ffi
 global.ffi = global.internal_ffi =
@@ -159,6 +157,14 @@ class Parser
     if child.type is NODE_TYPE.LOGICAL_OPERATOR
       unless @check_logical_op_validation child.value
         throw new SyntaxError "invalid LOGICAL_OPERATOR => `#{child.name}`"
+    
+    if child.type is NODE_TYPE.RELATION_GROUP
+      for {op, value} in child.token when op? and value?
+        unless @check_relation_op_validation op
+          throw new SyntaxError "invalid RELATION_OPERATOR => `#{op}`"
+    else if child.type is NODE_TYPE.RELATION_NODE
+      unless not child.token.op? or @check_relation_op_validation child.token.op
+        throw new SyntaxError "invalid RELATION_OPERATOR => `#{child.token.op}`"
 
     switch parent?.type
 
@@ -196,6 +202,9 @@ class Parser
   
   check_logical_op_validation: (op_name) ->
     op_name of @LOGICAL_OPS
+  
+  check_relation_op_validation: (op_name) ->
+    op_name of @RELATION_OPS
 
   output: (node = @tree, depth = 0) =>
     TAB = [0...depth].map => @TAB_STR 
