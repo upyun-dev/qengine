@@ -139,32 +139,28 @@ class Parser
         NODE_TYPE.RELATION_NODE
     
   semantic_checker: (parent, child) =>
-    
-    # check node type
-    # if parent?.children.type?
-    #   unless parent.children.type is child.type
-    #     throw new SemanticError "the brother nodes must be of the same type to each other"
-    # else
-    #   parent.children.type ?= child.type
-
     # check field name
     parent_field_name = parent?.field_name
     child_field_name = child.field_name
     
     if parent_field_name? and parent_field_name isnt child_field_name
       throw new SemanticError "field can not be embed inside a another field => a previous field name has been found: ('#{parent_field_name}')"
-
-    if child.type is NODE_TYPE.LOGICAL_OPERATOR
-      unless @check_logical_op_validation child.value
-        throw new SyntaxError "invalid LOGICAL_OPERATOR => `#{child.name}`"
     
-    if child.type is NODE_TYPE.RELATION_GROUP
-      for {op, value} in child.token when op? and value?
-        unless @check_relation_op_validation op
+    switch child.type
+      
+      when NODE_TYPE.LOGICAL_OPERATOR
+        unless @check_logical_op_validation child.value
+          throw new SyntaxError "invalid LOGICAL_OPERATOR => `#{child.name}`"
+      
+      when NODE_TYPE.RELATION_GROUP
+        for {op, value} in child.token when op? and value?
+          unless @check_relation_op_validation op
+            throw new SyntaxError "invalid RELATION_OPERATOR => `#{op}`"
+      
+      when NODE_TYPE.RELATION_NODE
+        { op, value } = child.token
+        unless not (op? and value?) or @check_relation_op_validation op
           throw new SyntaxError "invalid RELATION_OPERATOR => `#{op}`"
-    else if child.type is NODE_TYPE.RELATION_NODE
-      unless not child.token.op? or @check_relation_op_validation child.token.op
-        throw new SyntaxError "invalid RELATION_OPERATOR => `#{child.token.op}`"
 
     switch parent?.type
 

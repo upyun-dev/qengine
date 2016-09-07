@@ -63,7 +63,7 @@ FIELD_NAME_NODE -> RELATION_NODE | LOGICAL_OPERATOR_NODE
 
 qengine 会对误用的语法语义给出适当的错误提示, 方便使用和调试过程. ooq 定义两种类型的错误: 语法错误和语义错误.
 
-绝大多数潜在的错误会在语义分析阶段之前的语法树构建阶段检测出来
+绝大多数潜在的错误会在语义分析阶段之前的语法树构建阶段检测出来.
 
 `SyntaxError`
 
