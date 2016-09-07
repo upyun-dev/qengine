@@ -32,6 +32,34 @@ s.output
 s.query_code
 ```
 
+### ooq
+
++ `$` 前缀的字段表示对其直接子节点应用了对应的逻辑运算符.
++ 带有 `op` 和 `value` 的 hash 被看作一个关系运算, 作用于其祖先字段节点.
++ 组关系运算节点不可直接作为字段节点的子节点, 因为这样写隐含的二义性致使 qengine 无法推断正确的语义.
++ 如果一个逻辑运算节点有一个祖先字段节点, 那么不允许再把其他字段节点作为其子孙节点.
+
+### ffi
+
+提供 ffi 的 ORM 需要提供至少如下接口:
+
+```coffee
+ffi:
+  # 逻辑操作符集
+  and: (args) -> 
+  or: (args) -> 
+  not: (arg) -> 
+  xor: (args) -> 
+
+  # 关系操作符集
+  eq: (column, value) -> 
+  neq: (column, value) ->
+  gt: (column, value) -> 
+  lt: (column, value) -> 
+  gte: (column, value) ->
+  lte: (column, value) ->
+```
+
 ### 内幕
 
 #### 语法规则
