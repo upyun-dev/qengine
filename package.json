@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "ssh://gitlab@gitlab.widget-inc.com:65422/huanran.sun/qengine.git"
+    "url": "ssh://git@github.com/abbshr/qengine.git"
   },
   "author": "ran <abbshrsoufii@gmail.com>",
   "license": "MIT",
