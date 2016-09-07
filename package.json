@@ -2,7 +2,7 @@
   "name": "ooq",
   "version": "0.0.1",
   "description": "an object-oritend query lang that compiled to SQL code",
-  "main": "ooq.coffee",
+  "main": "index.js",
   "scripts": {
     "test": "mocha --compiler=coffee:coffee-compiler"
   },
@@ -11,5 +11,8 @@
     "url": "ssh://gitlab@gitlab.widget-inc.com:65422/huanran.sun/qengine.git"
   },
   "author": "ran <abbshrsoufii@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "coffee-script": "^1.10.0"
+  }
 }
