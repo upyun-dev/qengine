@@ -17,17 +17,29 @@
 
 # an example about ffi
 global.ffi = global.internal_ffi =
-  and: (args) -> "AND(#{inspect args})"
-  or: (args) -> "OR(#{inspect args})"
-  not: (arg) -> "NOT(#{inspect arg})"
-  xor: (args) -> "XOR(#{inspect args})"
+  and: (args) -> """
+    AND(
+      #{args})
+  """
+  or: (args) -> """
+    OR(
+      #{args})
+  """
+  not: (arg) -> """
+    NOT(
+      #{arg})
+  """
+  xor: (args) -> """
+    XOR(
+      #{args})
+  """
 
-  eq: (column, value) -> "eq(#{inspect column}, #{inspect value})"
-  neq: (column, value) -> "neq(#{inspect column}, #{inspect value})"
-  gt: (column, value) -> "gt(#{inspect column}, #{inspect value})"
-  lt: (column, value) -> "lt(#{inspect column}, #{inspect value})"
-  gte: (column, value) -> "gte(#{inspect column}, #{inspect value})"
-  lte: (column, value) -> "lte(#{inspect column}, #{inspect value})"
+  eq: (column, value) -> "eq(#{column}, #{value})"
+  neq: (column, value) -> "neq(#{column}, #{value})"
+  gt: (column, value) -> "gt(#{column}, #{value})"
+  lt: (column, value) -> "lt(#{column}, #{value})"
+  gte: (column, value) -> "gte(#{column}, #{value})"
+  lte: (column, value) -> "lte(#{column}, #{value})"
 
 NODE_TYPE =
   ROOT: 0
@@ -79,54 +91,46 @@ class Parser
   parse: (parent) =>
     @tree = @make_node parent, @ROOT_NAME, @token
 
-    implict_logic_operator = @tree
-    @tree = new Node '$and': implict_logic_operator.token
-    implict_logic_operator.name = '$and'
-    implict_logic_operator.type = NODE_TYPE.LOGICAL_OPERATOR
-    implict_logic_operator.value = 'and'
-    implict_logic_operator.parent = @tree
+    implict_wrapper = @tree
+    @tree = new Node '$and': implict_wrapper.token
+    implict_wrapper.name = '$and'
+    implict_wrapper.type = NODE_TYPE.LOGICAL_OPERATOR
+    implict_wrapper.value = 'and'
+    implict_wrapper.parent = @tree
 
     @tree.type = NODE_TYPE.ROOT
     @tree.name = @ROOT_NAME
     @tree.value = @ROOT_NAME
-    @tree.children.push implict_logic_operator
+    @tree.children.push implict_wrapper
     
     @tree
 
-  make_node: (parent, name, token, type) =>
+  make_node: (parent, name, token, leaf_type) =>
     node = new Node token
     node.name = name
     node.parent = parent
 
-    @calculate_spec node, token
+    if leaf_type?
+      node.type = leaf_type
+    else
+      @detect_nonleaf_type node, token
 
     node.field_name = if node.type is NODE_TYPE.FIELD_NAME
       node.name
     else
       parent?.field_name
     
-    # console.error node
     # check relationship between parent and child
     @semantic_checker parent, node
 
-    # console.log token
     # for the "in logical" leaf node (RELATION_NODE),
     # it has no child left
-    # unless node.type is NODE_TYPE.RELATION_NODE or node.type is NODE_TYPE.RELATION_GROUP
       # make child nodes for node
-      # console.info "#{parent.name} is making child nodes:" if parent?
-    if type = @detect_leaf_type token
-      # console.log 'make leaf node'
-      child = new Node token
-      child.parent = node
-      child.type = type
-      child.field_name = node.field_name
-      node.children.push child
-    else
-      node.children.push (@make_node node, name, child_token for name, child_token of token)...
-      # node.children.type = node.children[0].type
-      # console.info node.children
-
+    unless leaf_type?
+      if type = @detect_leaf_type token
+        node.children.push @make_node node, null, token, type
+      else
+        node.children.push (@make_node node, name, child_token for name, child_token of token)...
     node
   
   detect_leaf_type: (token) ->
@@ -173,7 +177,7 @@ class Parser
           when NODE_TYPE.RELATION_GROUP, NODE_TYPE.RELATION_NODE, NODE_TYPE.LOGICAL_OPERATOR, NODE_TYPE.FIELD_NAME
           else throw new SemanticError "can not inferer the semantic of the #{child.token} on logical operator (#{parent.name})"
   
-  calculate_spec: (node, token) =>
+  detect_nonleaf_type: (node, token) =>
     
     # for ROOT node
     if node.name is @ROOT_NAME
@@ -189,13 +193,6 @@ class Parser
     else
       node.type = NODE_TYPE.FIELD_NAME
       node.value = node.name
-    # # for RELATION_NODE node
-    # else if isPrimitive token or token.op? and token.value?
-    #   node.type = NODE_TYPE.RELATION_NODE
-    
-    # # for RELATION_GROUP node
-    # else isArray token
-    #   node.type = NODE_TYPE.RELATION_GROUP
   
   check_logical_op_validation: (op_name) ->
     op_name of @LOGICAL_OPS
@@ -276,7 +273,7 @@ class SemanticAnalysis
       else
         @derive_logical_operator child
 
-  derive_logical_operator: ({ value, field_name, children }) =>
+  derive_logical_operator: ({ value: logic_op, field_name, children }) =>
     sub_query = []
     for child in children
       { token, type } = child
@@ -291,7 +288,7 @@ class SemanticAnalysis
         when NODE_TYPE.FIELD_NAME
           sub_query.push (@derive_field_name child)...
     
-    @ffi[value] sub_query
+    @ffi[logic_op] sub_query
   
   output: ->
     _tmp_ffi = @ffi
