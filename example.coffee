@@ -1,28 +1,27 @@
 {Parser, SemanticAnalysis} = require './ooq'
 
 query =
-  name: 
-    $or: [
-      "john"
-      "baner"
-    ]
-  age:
-    $not:
-      op: 'gt'
-      value: 30
-  "$or":
-    "type":
-      "$not":
-        "$and": [
-          { op: "eq", value: "food" }
-          { op: "gt", value: "z*" }
-          { op: "lt", value: "m*" }
-        ]
-    "location":
-      "$or": [
-        { op: "eq", value: "New Yorks" }
-        { op: "eq", value: "Missiby" }
+  name:
+    op: 'gt'
+    value: 5
+  love: 'game'
+  $not:
+    # case: 5
+    $xor:
+      home: 3
+      work: 
+        $or: ['china', 'usa']
+  $or:
+    age:10
+    location:
+      $and: [
+        {op: 'lt', value: "dsds"}
+        {op: 'neq', value: 'ddd'}
       ]
+    $and:
+      xx: { op: 'like', value: 465 }
+      yy: { op: 'isNull' }
+
 
 parser = new Parser query
 console.log "抽象语法树 =>"
