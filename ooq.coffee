@@ -172,6 +172,8 @@ class Parser
     switch parent?.type
 
       when NODE_TYPE.FIELD_NAME
+        if parent.children.length > 0
+          throw new SemanticError "FIELD_NAME(#{parent.name}) can not have multiple child"
         switch child.type
         
           when NODE_TYPE.RELATION_NODE, NODE_TYPE.LOGICAL_OPERATOR

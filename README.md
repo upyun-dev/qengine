@@ -39,6 +39,7 @@ s.query_code
 + 组关系运算节点不可直接作为字段节点的子节点, 因为这样写隐含的二义性致使 qengine 无法推断正确的语义.
 + 如果一个逻辑运算节点有一个祖先字段节点, 那么不允许再把其他字段节点作为其子孙节点.
 + `$not` 逻辑运算节点只能有一个子节点, 并且这个子节点类型不能是组关系运算节点, 否则 qengine 会编译出语义错误.
++ 字段节点只能有一个子节点, 否则 qengine 会编译出错. 
 
 ### ffi
 
@@ -85,11 +86,11 @@ FIELD_NAME_NODE -> RELATION_NODE | LOGICAL_OPERATOR_NODE
 
 #### 节点类型
 
-+ `NODE_TYPE::ROOT`: 整个语法树的入口节点, 没有特殊作用
-+ `NODE_TYPE::FIELD_NAME`: 表示 SQL column 名字的节点, 用于向下传递 column, 展开子表达式.
-+ `NODE_TYPE::RELATION_NODE`: 叶节点之一. 开始回溯用 ffi 生成代码.
-+ `NODE_TYPE::RELATION_GROUP`: 叶节点之一, 表示一组上一类型. 开始回溯用 ffi 生成代码.
-+ `NODE_TYPE::LOGICAL_OPERATOR`: 表示逻辑运算符节点, 作用于子节点, 构建他们之间的逻辑关系.
++ 根节点 -> `NODE_TYPE::ROOT`: 整个语法树的入口节点, 没有特殊作用
++ 字段节点 -> `NODE_TYPE::FIELD_NAME`: 表示 SQL column 名字的节点, 用于向下传递 column, 展开子表达式.
++ 关系运算节点 -> `NODE_TYPE::RELATION_NODE`: 叶节点之一. 开始回溯用 ffi 生成代码.
++ 组关系运算节点 -> `NODE_TYPE::RELATION_GROUP`: 叶节点之一, 表示一组上一类型. 开始回溯用 ffi 生成代码.
++ 逻辑运算节点 -> `NODE_TYPE::LOGICAL_OPERATOR`: 表示逻辑运算符节点, 作用于子节点, 构建他们之间的逻辑关系.
 
 #### 错误提示
 
