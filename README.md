@@ -38,6 +38,7 @@ s.query_code
 + 带有 `op` 和 `value` 的 hash 被看作一个关系运算, 作用于其祖先字段节点.
 + 组关系运算节点不可直接作为字段节点的子节点, 因为这样写隐含的二义性致使 qengine 无法推断正确的语义.
 + 如果一个逻辑运算节点有一个祖先字段节点, 那么不允许再把其他字段节点作为其子孙节点.
++ `$not` 逻辑运算节点只能有一个子节点, 并且这个子节点类型不能是组关系运算节点, 否则 qengine 会编译出语义错误.
 
 ### ffi
 
@@ -58,6 +59,9 @@ ffi:
   lt: (column, value) -> 
   gte: (column, value) ->
   lte: (column, value) ->
+  like: (column, value) ->
+  isNull: (column) ->
+  isNotNull: (column) ->
 ```
 
 ### 内幕
