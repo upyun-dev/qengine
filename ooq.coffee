@@ -38,6 +38,9 @@ global.ffi = global.internal_ffi =
   lt: (column, value) -> "lt(#{column}, #{value})"
   gte: (column, value) -> "gte(#{column}, #{value})"
   lte: (column, value) -> "lte(#{column}, #{value})"
+  like: (column, value) -> "like(#{column}, #{value})"
+  isNull: (column) -> "isNull(#{column})"
+  isNotNull: (column) -> "isNotNull(#{column})"
 
 NODE_TYPE =
   ROOT: 0
@@ -78,6 +81,9 @@ class Parser
     "lt": on
     "gte": on
     "lte": on
+    "like": on
+    "isNull": on
+    "isNotNull": on
 
   TAB_STR: ' '.repeat 4
 
@@ -117,9 +123,6 @@ class Parser
       node.name
     else
       parent?.field_name
-    
-    # check relationship between parent and child
-    @semantic_checker parent, node
 
     # for the "in logical" leaf node (RELATION_NODE),
     # it has no child left
@@ -128,14 +131,18 @@ class Parser
       if type = @detect_leaf_type token
         node.children.push @make_node node, null, token, type
       else
-        node.children.push (@make_node node, name, child_token for name, child_token of token)...
+        node.children.push @make_node node, name, child_token for name, child_token of token
+
+    # check relationship between parent and child
+    @semantic_checker parent, node
+
     node
   
   detect_leaf_type: (token) ->
     switch
       when isArray token
         NODE_TYPE.RELATION_GROUP
-      when token.op? and token.value? or isPrimitive token
+      when token.op? or isPrimitive token
         NODE_TYPE.RELATION_NODE
     
   semantic_checker: (parent, child) =>
@@ -153,13 +160,13 @@ class Parser
           throw new SyntaxError "invalid LOGICAL_OPERATOR => `#{child.name}`"
       
       when NODE_TYPE.RELATION_GROUP
-        for {op, value} in child.token when op? and value?
+        for {op, value} in child.token when op?
           unless @check_relation_op_validation op
             throw new SyntaxError "invalid RELATION_OPERATOR => `#{op}`"
       
       when NODE_TYPE.RELATION_NODE
         { op, value } = child.token
-        unless not (op? and value?) or @check_relation_op_validation op
+        unless not op? or @check_relation_op_validation op
           throw new SyntaxError "invalid RELATION_OPERATOR => `#{op}`"
 
     switch parent?.type
@@ -171,8 +178,11 @@ class Parser
           else throw new SemanticError "can not inferer the semantic of the #{child.token} on field name (#{parent.name})"
       
       when NODE_TYPE.LOGICAL_OPERATOR
-        if parent.name is '$not' and parent.children.length > 0
-          throw new SemanticError "`$not` LOGICAL_OPERATOR node must has only one child"
+        if parent.name is '$not'
+          if parent.children.length > 0
+            throw new SemanticError "`$not` LOGICAL_OPERATOR node must has only one child"
+          else if child.type is NODE_TYPE.RELATION_GROUP
+            throw new SemanticError "can not inferer the semantic of the #{child.token} on logical operator (#{parent.name})"
         
         switch child.type
         
