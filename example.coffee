@@ -4,17 +4,18 @@ query =
   name:
     op: 'gt'
     value: 5
-  love: 'game'
+  love: 0
   $not:
     # case: 5
     $xor:
       home: 3
       work: 
-        $or: ['china', 'usa']
+        $or: [null, 'usa']
   $or:
-    age:10
+    age: 10
     location:
       $and: [
+        null
         {op: 'lt', value: "dsds"}
         {op: 'neq', value: 'ddd'}
       ]

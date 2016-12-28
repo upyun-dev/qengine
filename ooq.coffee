@@ -142,7 +142,7 @@ class Parser
     switch
       when isArray token
         NODE_TYPE.RELATION_GROUP
-      when token.op? or isPrimitive token
+      when token?.op? or isPrimitive token
         NODE_TYPE.RELATION_NODE
     
   semantic_checker: (parent, child) =>
@@ -152,20 +152,21 @@ class Parser
     
     if parent_field_name? and parent_field_name isnt child_field_name
       throw new SemanticError "field can not be embed inside a another field => a previous field name has been found: ('#{parent_field_name}')"
-    
+
     switch child.type
-      
+
       when NODE_TYPE.LOGICAL_OPERATOR
         unless @check_logical_op_validation child.value
           throw new SyntaxError "invalid LOGICAL_OPERATOR => `#{child.name}`"
-      
+
       when NODE_TYPE.RELATION_GROUP
-        for {op, value} in child.token when op?
+        for token in child.token when op?
+          {op, value} = token ? {}
           unless @check_relation_op_validation op
             throw new SyntaxError "invalid RELATION_OPERATOR => `#{op}`"
-      
+
       when NODE_TYPE.RELATION_NODE
-        { op, value } = child.token
+        { op, value } = child.token ? {}
         unless not op? or @check_relation_op_validation op
           throw new SyntaxError "invalid RELATION_OPERATOR => `#{op}`"
 
@@ -217,6 +218,7 @@ class Parser
   output: (node = @tree, depth = 0) =>
     TAB = [0...depth].map => @TAB_STR 
       .join '|'
+
     { name, value, type, parent, children, field_name, token } = node
     switch type
       when NODE_TYPE.ROOT
@@ -238,16 +240,16 @@ class Parser
       when NODE_TYPE.RELATION_NODE
         """
           #{TAB}| -> TYPE = RELATION_NODE
-          #{TAB}| -> VALUE = #{token.value ? token}
-          #{TAB}| -> OP = #{token.op ? "NIL"}
+          #{TAB}| -> VALUE = #{token?.value ? token}
+          #{TAB}| -> OP = #{token?.op ? "NIL"}
           #{TAB}| -> FIELD_NAME = #{field_name}
         """
       when NODE_TYPE.RELATION_GROUP
         (for item in token
           """
             #{TAB}| -> TYPE = RELATION_GROUP
-            #{TAB}| -> VALUE = #{item.value ? item}
-            #{TAB}| -> OP = #{item.op ? "NIL"}
+            #{TAB}| -> VALUE = #{item?.value ? item}
+            #{TAB}| -> OP = #{item?.op ? "NIL"}
             #{TAB}| -> FIELD_NAME = #{field_name}
           """
         ).join "\n#{TAB}================\n"
@@ -285,7 +287,7 @@ class SemanticAnalysis
     for child in children
       { token, type, value, field_name, children } = child
       if type is NODE_TYPE.RELATION_NODE
-        { op, value } = token
+        { op, value } = token ? {}
         @ffi[op ? 'eq'] field_name, value ? token
       else
         @derive_logical_operator child
@@ -296,9 +298,9 @@ class SemanticAnalysis
       { token, type } = child
       switch type
         when NODE_TYPE.RELATION_GROUP
-          sub_query.push (@ffi[sub_token.op ? 'eq'] field_name, sub_token.value ? sub_token for sub_token in token)...
+          sub_query.push (@ffi[sub_token?.op ? 'eq'] field_name, sub_token?.value ? sub_token for sub_token in token)...
         when NODE_TYPE.RELATION_NODE
-          { op, value } = token
+          { op, value } = token ? {}
           sub_query.push @ffi[op ? 'eq'] field_name, value ? token
         when NODE_TYPE.LOGICAL_OPERATOR
           sub_query.push @derive_logical_operator child

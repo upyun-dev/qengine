@@ -1,5 +1,5 @@
 {
-  "name": "ooq",
+  "name": "@upyun/ooq",
   "version": "0.0.1",
   "description": "an object-oritend query lang that compiled to SQL code",
   "main": "index.js",
