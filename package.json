@@ -1,10 +1,11 @@
 {
-  "name": "@upyun/ooq",
-  "version": "0.0.1",
+  "name": "ooq",
+  "version": "0.0.2",
   "description": "an object-oritend query lang that compiled to SQL code",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --compiler=coffee:coffee-compiler"
+    "test": "mocha --compiler=coffee:coffee-compiler",
+    "example": "node_modules/.bin/coffee example/out.coffee"
   },
   "repository": {
     "type": "git",

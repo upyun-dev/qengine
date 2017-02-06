@@ -1,4 +1,4 @@
-{Parser, SemanticAnalysis} = require './ooq'
+{Parser, SemanticAnalysis} = require '../ooq'
 
 query =
   name:

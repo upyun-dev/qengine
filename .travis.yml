@@ -1,0 +1,20 @@
+language: node_js
+node_js:
+  - '7'
+install:
+  - npm install
+script:
+  - npm run example
+deploy:
+  provider: npm
+  email: shanda.lin+npm@upai.com
+  api_key:
+    secure: rVw0mBuNz4nkyOeNayWAKlER1VTTAcBrqs5Phmr5Sz93MGzH2w2cc0G0dqd4MHGkX+1Xp2RJbjQQhY6ZQyy8qeVLrqHGlM4/ay4KdysKvPpv+6ZqWvfE6v6WIEN4ejDcdERl4GRhP2lAHWQFnccLoPkjnnUdW1xjQlHCVkJE3LnT05P6XrZ0i9hhfMnb1qUdfE4vlfDI8p075mjfuz7vkyIp1abmB4DkzkXdlyCHIJBJIBG4Qs27oaw1mgFryCPeXmFUzL6C2ZJN/eoEkmtPprzlR6WY4s5NrOOVB1PqQmWQOqYz0Bk/J/VtiwCbWv46RdieAYU5n1ja1A5xUctIvk/PwU6USQj1Z3zEOu3Cf+/3X5pjdD/6dRfV5iT7dWLtqYO+G9sieO4Uj2WEHkXnD6vdoRDpnJJ07pVFkhB0LM6Da/0FMe3a6UyZ9BOR2v97x3GXHqYTLmY26aCvNWoqiFAbPjjEtV8E1x2fP5+O29LjYL5oK3eYHvlLV4uC3zI5U2rCaSqarA9o5xmjJ4sVd3+aKQAH40wcy0Dce+BoxLkrmerExr/qUEUNOhqWDWA9aRxSOqii5IwBbrU0s0i/JOxhM0Bctou4LHdcaZMUsdTFmXLmHlMI2E4g41X2zSmz7GfUW1JnONyd1bR6rajD7e7U/qHafaq/OPNWY8mtkM8=
+  on:
+    tags: true
+    repo: upyun-dev/qengine
+
+env:
+  global:
+    secure: YoLwTjJTaSRUMZwICl2akudUeBgdLeH8Ju/fV6b3CuW4nAYA+wIdSACaBzTJNg8d3fZTOwNnL6qyhg7wMXSeiKRtmEqpJPL9SeFnpmUkqdzH1jCD8FBlSMSBpQtGHv5+GzzOKBaoMzi0IX8YJx/eCUSmIz9pHpieOqWaOAiizzAsPW4wgvqz72+tUmhPrZfwm1+9+oGHgoS1Nr2/aTgCurpq5/jGPdDPQEY+0gIdw+Z/0TpNmKrqNHO2b/RwnSH7QH26zQg2BBSna1IQXEbbcOVez143bmLgfTH3aRA+sA9iw2OX+Bm+a6eFXnOPNSwa3VwOShpL/QfrN0gvPnLUeEDhMQ/QVQ/Fkrsa6Q3XZEDNkDSDe6YbALEyeHurrS5aeLwYZSg+4byN9gArIteHqf8IVoXgxjucyt4IZJ8PmziiTclerOvviEwmSAjNjCTA8Od2duZwzIcTQCy3Nc3pNjNDch2rtlu+8U3WmPecxyAGBaIZYdqHKhSG/HlqYfQyxc1KYyBD7mnhzf6Mtp2YYB+OS0dMmWYbmYo05H03JUi4Ng+hABlxk/wefsRPxms9eP/h2NqAld+ECkF7WaxeGhUmyMNbQob/OQGn2DYrAoY6roJjdImjyE+hQ3HeM0I6FtG1dAvihV5grQQmdk4ENXYyoDkdIEUxc/5CBUc7BFA=
+    
