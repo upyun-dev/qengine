@@ -1,4 +1,4 @@
 if (!require.extensions['.coffee'])
-  require('coffee-script/register');
+  require('coffeescript/register');
 
-module.exports = require('./ooq');
+module.exports = require('./src/ooq');

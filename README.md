@@ -60,8 +60,7 @@ ffi:
   gte: (column, value) ->
   lte: (column, value) ->
   like: (column, value) ->
-  isNull: (column) ->
-  isNotNull: (column) ->
+  null: (column) ->
 ```
 
 ### 内幕
