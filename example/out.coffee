@@ -4,27 +4,24 @@ ffi = require "../src/ffi"
 
 query =
   name:
-    $gt: 5
-  love: 0
+    $like: "ran_meow"
+  love: "coding"
   $not:
-    # case: 5
     $xor:
-      home: 3
-      work: 
+      athome: false
+      age: 
         $or:
-          $eq: 1
-          $gt: 2
+          $lt: 20
+          $gt: 10
   $or:
     age: 10
     location:
       $and:
-        $eq: null
         $lt: "dasasd"
         $neq: "ddd"
     $and:
       xx: $like: 456
-      $null: "yy"
-
+      $null: "id"
 
 parser = new Parser query, ffi
 tree = parser.parse()

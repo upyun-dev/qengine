@@ -55,7 +55,7 @@ class AstNode
       when @is_op name then throw new SyntaxError "the operator `#{name}` doesn't implement in the current FFI"
       else Field
 
-  is_leaf: (token) -> lo.isString(token) or lo.isNumber(token) or not token?
+  is_leaf: (token) -> lo.isString(token) or lo.isNumber(token) or lo.isBoolean(token) or not token?
   # is_leaf_grp: (token) ->
   #   isArray token
   is_urop: (name) -> name in UNARY_RELATION_OPS
