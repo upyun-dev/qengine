@@ -9,7 +9,6 @@ class Parser
   parse: -> @root.parse()
 
   # 语义分析 & 中间代码生成
-  gen_code: (tree) -> tree?.gen @ffi
-
+  gen_code: (tree) -> (tree ? @parse()).gen @ffi
 
 module.exports = Parser
