@@ -127,6 +127,21 @@ SemanticError "unary relation operator [#{@name}] can't be used under a Field, b
 SemanticError "unary relation operator [#{@name}] can't have more than one child"
 ```
 
+#### notice
+
+需要明确 ooq-lang 是基于 `JSON` 构建的，因此不能违反 JSON 的基本语法，比如想要构造这样的一个查询：『age 不大于等于 5 且不等于 2』，如果写成：
+
+```coffee
+age: { $and: { $not:{ $gte: 5}, $not: {$eq: "2"}} }
+```
+
+尽管语义上是明确的，但是由于 JSON 不允许在存在两个相同的 key，所以前一个 `$not` 会被后一个覆盖掉，当然这个条件有很多种变种写法，比如把否定变肯定，或者仍然使用否定语义：
+
+```coffee
+age: { $and: { $lt: 5, $neq: 2 }}
+age: { $not: { $or: { $gte: 5, $eq: "2" }}}
+```
+
 #### 示例
 
 给出如下查询语句:
