@@ -3,7 +3,7 @@ NODE_TYPE = require "./type"
 { UNARY_LOGICAL_OPS, UNARY_RELATION_OPS, BINARY_LOGICAL_OPS, BINARY_RELATION_OPS } = require "./op"
 
 # 语法树节点
-class Node
+class AstNode
   constructor: (name, token, parent, related_field_name) ->
     # 节点包含的原始值
     @token = token
@@ -26,26 +26,25 @@ class Node
     # else if @is_leaf_grp @token
     #   @next Leaf, null, token for token in @token
     else if lo.isEmpty @token
+      # 空节点
       throw SyntaxError "the #{@type} missing child node"
     else
-    # 非叶结点
+      # 非叶结点
       for name, token of @token
         N = @detect_node_type name, token
         @next N, name, token
     @
 
-  next: (Child, name, token) ->
-    @syntax_check Child
-    @semantic_check Child
-    @children.push new Child(name, token ? null, @, @related_field_name).parse()
+  next: (Node, name, token) ->
+    @syntax_check Node
+    @semantic_check Node
+    @children.push new Node(name, token ? null, @, @related_field_name).parse()
 
-  gen: (ffi) -> ffi[@value] (child.gen ffi for child in @children)
-
-  semantic_check: (Child) ->
-  syntax_check: (Child)->
+  semantic_check: (Node) ->
+  syntax_check: (Node)->
     # 子类型错误，语法错误
-    if Child::type not in @child_type
-      throw new SemanticError "invalid type: `#{Child::type}`, the accepted child type of `#{@type}` must be included in #{@child_type}"
+    if Node::type not in @child_type
+      throw new SemanticError "invalid type: `#{Node::type}`, the accepted child type of `#{@type}` must be included in #{@child_type}"
 
   detect_node_type: (name, token) ->
     switch
@@ -65,14 +64,14 @@ class Node
   is_blop: (name) -> name in BINARY_LOGICAL_OPS
   is_op: (name) -> name.startsWith "$"
 
-# class Root extends Node
+# class Root extends AstNode
 #   type: NODE_TYPE.BINARY_LOGICAL_OPERATOR
 #   child_type: [NODE_TYPE.FIELD, NODE_TYPE.UNARY_LOGICAL_OPERATOR, NODE_TYPE.UNARY_RELATION_OPERATOR, NODE_TYPE.BINARY_RELATION_OPERATOR, NODE_TYPE.BINARY_LOGICAL_OPERATOR]
 #   constructor: (token) ->
 #     super "$and", token, null, null
 #     @value = "and"
 
-class Field extends Node
+class Field extends AstNode
   type: NODE_TYPE.FIELD
   child_type: [NODE_TYPE.LEAF, NODE_TYPE.UNARY_LOGICAL_OPERATOR, NODE_TYPE.BINARY_LOGICAL_OPERATOR, NODE_TYPE.BINARY_RELATION_OPERATOR]
   constructor: (name, token, parent, related_field_name) ->
@@ -81,8 +80,8 @@ class Field extends Node
     @value = name
     @related_field_name = name
 
-  semantic_check: (Child) ->
-    super Child
+  semantic_check: (Node) ->
+    super Node
     if @parent.related_field_name?
       # 二义性模糊语义，语义错误
       throw new SemanticError "previous field name [#{@parent.related_field_name}] has been found, can not specify other `Field` type inside one `Field`"
@@ -91,10 +90,9 @@ class Field extends Node
 
   gen: (ffi) ->
     [child] = @children
-    # if child.type is NODE_TYPE.Leaf
     child.gen ffi
 
-class UnaryLogicalOp extends Node
+class UnaryLogicalOp extends AstNode
   type: NODE_TYPE.UNARY_LOGICAL_OPERATOR
   child_type: [
     NODE_TYPE.FIELD
@@ -107,8 +105,8 @@ class UnaryLogicalOp extends Node
   constructor: (name, token, parent, related_field_name) ->
     super name, token, parent, related_field_name
     @value = name[1..]
-  semantic_check: (Child) ->
-    super Child
+  semantic_check: (Node) ->
+    super Node
     if @children.length > 0
       throw new SemanticError "unary logical operator [#{@name}] can't have more than one child"
   
@@ -116,7 +114,7 @@ class UnaryLogicalOp extends Node
     [child] = @children
     ffi[@value] child.gen ffi
 
-class BinaryLogicalOp extends Node
+class BinaryLogicalOp extends AstNode
   type: NODE_TYPE.BINARY_LOGICAL_OPERATOR
   child_type: [
     NODE_TYPE.FIELD
@@ -128,15 +126,16 @@ class BinaryLogicalOp extends Node
   constructor: (name, token, parent, related_field_name) ->
     super name, token, parent, related_field_name
     @value = name[1..]
+  gen: (ffi) -> ffi[@value] (child.gen ffi for child in @children)...
 
-class UnaryRelationOp extends Node
+class UnaryRelationOp extends AstNode
   type: NODE_TYPE.UNARY_RELATION_OPERATOR
   child_type: [NODE_TYPE.LEAF]
   constructor: (name, token, parent, related_field_name) ->
     super name, token, parent, related_field_name
     @value = name[1..]
-  semantic_check: (Child) ->
-    super Child
+  semantic_check: (Node) ->
+    super Node
     if @parent.related_field_name?
       throw new SemanticError "unary relation operator [#{@name}] can't be used under a Field, but previous related field: #{@parent.related_field_name}"
     if @children.length > 0
@@ -146,7 +145,7 @@ class UnaryRelationOp extends Node
     [leaf] = @children
     ffi[@value] leaf.gen()
 
-class BinaryRelationOp extends Node
+class BinaryRelationOp extends AstNode
   type: NODE_TYPE.BINARY_RELATION_OPERATOR
   child_type: [NODE_TYPE.LEAF]
   constructor: (name, token, parent, related_field_name) ->
@@ -157,7 +156,7 @@ class BinaryRelationOp extends Node
     [leaf] = @children
     ffi[@value] @related_field_name, leaf.gen()
 
-class Leaf extends Node
+class Leaf extends AstNode
   type: NODE_TYPE.LEAF
   constructor: (name, token, parent, related_field_name) ->
     super name, token, parent, related_field_name
@@ -167,7 +166,7 @@ class Leaf extends Node
   parse: -> @
   gen: -> @value
 
-# class LeafGroup extends Node
+# class LeafGroup extends AstNode
 #   type: NODE_TYPE.LEAFGRP
 #   child_type: [NODE_TYPE.LEAF]
 #   # constructor: (name, token, parent, related_field_name) ->
@@ -179,4 +178,4 @@ class SemanticError extends Error
     super()
     @name = 'SemanticError'
 
-module.exports = { Node, Leaf, Field, UnaryLogicalOp, UnaryRelationOp, BinaryLogicalOp, BinaryRelationOp }
+module.exports = { AstNode, Leaf, Field, UnaryLogicalOp, UnaryRelationOp, BinaryLogicalOp, BinaryRelationOp }

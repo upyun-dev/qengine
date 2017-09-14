@@ -1,4 +1,9 @@
-if (!require.extensions['.coffee'])
-  require('coffeescript/register');
+const { accessSync, constants: { F_OK } } = require("fs");
 
-module.exports = require('./src/ooq');
+try {
+  accessSync(`${__dirname}/lib`, F_OK);
+  module.exports = require("./lib");
+} catch (e) {
+  require('coffeescript/register');
+  module.exports = require("./src");
+}

@@ -1,4 +1,6 @@
-{Parser, SemanticAnalysis} = require '../src/ooq'
+Parser = require '../src'
+ffi = require "../src/ffi"
+{ output } = require "../src/util"
 
 query =
   name:
@@ -24,11 +26,9 @@ query =
       $null: "yy"
 
 
-parser = new Parser query
-console.log parser
+parser = new Parser query, ffi
+tree = parser.parse()
 console.log "抽象语法树 =>"
-console.log parser.output()
-# analyzer = new SemanticAnalysis parser.tree
-# console.log "中间代码表示 =>"
-# console.log analyzer.output()
-# module.exports = {parser, query}
+console.log output tree
+console.log "中间代码 =>"
+console.log parser.gen_code tree

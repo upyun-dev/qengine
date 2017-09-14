@@ -1,20 +1,24 @@
 # an example about ffi
 module.exports =
-  and: (args) -> """
+  and: (args...) -> """
     AND(
-      #{args})
+      #{args}
+    )
   """
-  or: (args) -> """
+  or: (args...) -> """
     OR(
-      #{args})
+      #{args}
+    )
   """
   not: (arg) -> """
     NOT(
-      #{arg})
+      #{arg}
+    )
   """
-  xor: (args) -> """
+  xor: (args...) -> """
     XOR(
-      #{args})
+      #{args}
+    )
   """
 
   eq: (column, value) -> "eq(#{column}, #{value})"
