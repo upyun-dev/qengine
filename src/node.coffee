@@ -3,16 +3,17 @@ NODE_TYPE = require "./type"
 { UNARY_LOGICAL_OPS, UNARY_RELATION_OPS, BINARY_LOGICAL_OPS, BINARY_RELATION_OPS } = require "./op"
 
 # 语法树节点
+# @token - 节点包含的原始值
+# @name - 节点标识符
+# @value - 节点属性
+# @type - 节点类型
+# @parent - 父节点
+# @children - 子节点数组
+# @related_field_name - 关联的域
 class AstNode
   constructor: (name, token, parent, related_field_name) ->
-    # 节点包含的原始值
     @token = token
-    # 节点名称
     @name = name
-    # 节点类型
-    # @type = type
-    # 节点值
-    # @value = null
     @parent = parent
     @children = []
     @related_field_name = related_field_name
@@ -26,10 +27,10 @@ class AstNode
     # else if @is_leaf_grp @token
     #   @next Leaf, null, token for token in @token
     else if lo.isEmpty @token
-      # 空节点
+    # 空节点
       throw SyntaxError "the #{@type} missing child node"
     else
-      # 非叶结点
+    # 非叶结点
       for name, token of @token
         N = @detect_node_type name, token
         @next N, name, token
@@ -45,7 +46,7 @@ class AstNode
     # 子类型错误，语法错误
     if Node::type not in @child_type
       throw new SemanticError """
-        invalid Node => [name: #{name}, token: #{token}, type: #{Node::type}],
+        invalid Node => [name: #{name}, token: #{JSON.stringify token}, type: #{Node::type}],
         the accepted child type of the parent [name: #{@name}, token: #{JSON.stringify @token}, type: #{@type}] must be included in #{@child_type}
       """
 
