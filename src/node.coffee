@@ -36,15 +36,18 @@ class AstNode
     @
 
   next: (Node, name, token) ->
-    @syntax_check Node
-    @semantic_check Node
+    @syntax_check Node, name, token
+    @semantic_check Node, name, token
     @children.push new Node(name, token ? null, @, @related_field_name).parse()
 
-  semantic_check: (Node) ->
-  syntax_check: (Node)->
+  semantic_check: (Node, name, token) ->
+  syntax_check: (Node, name, token)->
     # 子类型错误，语法错误
     if Node::type not in @child_type
-      throw new SemanticError "invalid type: `#{Node::type}`, the accepted child type of `#{@type}` must be included in #{@child_type}"
+      throw new SemanticError """
+        invalid Node => [name: #{name}, token: #{token}, type: #{Node::type}],
+        the accepted child type of the parent [name: #{@name}, token: #{JSON.stringify @token}, type: #{@type}] must be included in #{@child_type}
+      """
 
   detect_node_type: (name, token) ->
     switch
@@ -84,9 +87,12 @@ class Field extends AstNode
     super Node
     if @parent.related_field_name?
       # 二义性模糊语义，语义错误
-      throw new SemanticError "previous field name [#{@parent.related_field_name}] has been found, can not specify other `Field` type inside one `Field`"
+      throw new SemanticError """
+        for node [name: #{@name}, token: #{JSON.stringify @token}, type: #{@type}],
+        start spreading a new field <#{@name}>, but a previous field [#{@parent.related_field_name}] has been found, can not specify other `Field` type inside one `Field`
+      """
     else if @children.length > 0
-      throw new SemanticError "`Field` type can not have multiple child"
+      throw new SemanticError "the Field node [name: #{@name}, token: #{JSON.stringify @token}, type: #{@type}] can not have multiple child"
 
   gen: (ffi) ->
     [child] = @children
@@ -108,7 +114,7 @@ class UnaryLogicalOp extends AstNode
   semantic_check: (Node) ->
     super Node
     if @children.length > 0
-      throw new SemanticError "unary logical operator [#{@name}] can't have more than one child"
+      throw new SemanticError "unary logical operator node [name: #{@name}, token: #{JSON.stringify @token}, type: #{@type}] can't have more than one child"
   
   gen: (ffi) ->
     [child] = @children
@@ -137,9 +143,13 @@ class UnaryRelationOp extends AstNode
   semantic_check: (Node) ->
     super Node
     if @parent.related_field_name?
-      throw new SemanticError "unary relation operator [#{@name}] can't be used under a Field, but previous related field: #{@parent.related_field_name}"
+      throw new SemanticError """
+        unary relation operator node [name: #{@name}, token: #{JSON.stringify @token}, type: #{@type}] can't be used under a Field node, but previous related field [#{@parent.related_field_name}] has been found
+      """
     if @children.length > 0
-      throw new SemanticError "unary relation operator [#{@name}] can't have more than one child"
+      throw new SemanticError """
+        unary relation operator node [name: #{@name}, token: #{JSON.stringify @token}, type: #{@type}] can't have more than one child
+      """
   
   gen: (ffi) ->
     [leaf] = @children
